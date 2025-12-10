@@ -67,6 +67,7 @@ typedef struct persistent_config {
     uint8_t lang;
     uint8_t startup_app;
     uint8_t cpu_oc_level;
+    uint16_t standby_sleep_timeout;
     char    startup_file[256];
 
     uint16_t main_menu_timeout_s;
@@ -82,9 +83,9 @@ typedef struct persistent_config {
 
 static const persistent_config_t persistent_config_default = {
     .magic = CONFIG_MAGIC,
-    .version = 6,
+    .version = 7,
 
-    .backlight = ODROID_BACKLIGHT_LEVEL6,
+    .backlight = ODROID_BACKLIGHT_LEVEL3,
     .start_action = ODROID_START_ACTION_RESUME,
     .volume = ODROID_AUDIO_VOLUME_MAX / 2, // Too high volume can cause brown out if the battery isn't connected.
     .font_size = 8,
@@ -117,6 +118,7 @@ static const persistent_config_t persistent_config_default = {
 #endif
     .startup_app = 0,
     .cpu_oc_level = 0,
+    .standby_sleep_timeout = 0xffff,
     .main_menu_timeout_s = 60 * 10, // Turn off after 10 minutes of idle time in the main menu
     .main_menu_selected_tab = 0,
     .main_menu_cursor = 0,
@@ -303,6 +305,16 @@ void odroid_settings_cpu_oc_level_set(uint8_t oc)
 uint8_t odroid_settings_cpu_oc_level_get(void)
 {
     return persistent_config_ram.cpu_oc_level;
+}
+
+void odroid_settings_StandbySleepTimeoutMinutes_set(uint16_t value)
+{
+    persistent_config_ram.standby_sleep_timeout = value;
+}
+
+uint16_t odroid_settings_StandbySleepTimeoutMinutes_get(void)
+{
+    return persistent_config_ram.standby_sleep_timeout;
 }
 
 int8_t odroid_settings_colors_get()

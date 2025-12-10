@@ -123,6 +123,23 @@ static bool ingame_overlay_loop() {
     return false;
 }
 
+static void repaint_overlay(void_callback_t repaint) {
+    ingame_overlay_loop();
+    repaint();
+}
+
+static void open_pause_menu(odroid_dialog_choice_t *game_options, void_callback_t repaint) {
+    void _repaint() {
+        repaint_overlay(repaint);
+    }
+
+    odroid_overlay_game_menu(game_options, _repaint);
+
+    common_emu_state.pause_after_frames = 0;
+    common_emu_state.startup_frames = 0;
+    cpumon_stats.last_busy = 0;
+}
+
 /**
  * Common input/macro/menuing features inside all emu loops. This is to be called
  * after inputs are read into `joystick`, but before the actual emulation tick
@@ -140,8 +157,7 @@ void common_emu_input_loop(odroid_gamepad_state_t *joystick, odroid_dialog_choic
     static uint8_t clear_frames = 0;
 
     void _repaint() {
-        ingame_overlay_loop();
-        repaint();
+        repaint_overlay(repaint);
     }
 
     if(joystick->values[ODROID_INPUT_VOLUME]){  // PAUSE/SET button
@@ -152,6 +168,8 @@ void common_emu_input_loop(odroid_gamepad_state_t *joystick, odroid_dialog_choic
                 // Do NOT save-state and then poweroff
                 last_key = ODROID_INPUT_POWER;
                 audio_stop_playing();
+                open_pause_menu(game_options, _repaint);
+                clear_frames = 2;
                 odroid_system_sleep();
             }
             else if(joystick->values[ODROID_INPUT_START]){ // GAME button
@@ -327,11 +345,8 @@ void common_emu_input_loop(odroid_gamepad_state_t *joystick, odroid_dialog_choic
         // PAUSE/SET has been released without performing any macro. Launch menu
         pause_pressed = false;
 
-        odroid_overlay_game_menu(game_options, _repaint);
+        open_pause_menu(game_options, _repaint);
         clear_frames = 2;
-
-        common_emu_state.startup_frames = 0;
-        cpumon_stats.last_busy = 0;
     }
     else if (!joystick->values[ODROID_INPUT_VOLUME]){
         pause_pressed = false;
@@ -354,13 +369,15 @@ void common_emu_input_loop(odroid_gamepad_state_t *joystick, odroid_dialog_choic
     if (joystick->values[ODROID_INPUT_POWER]) {
         // Save-state and poweroff
         audio_stop_playing();
+        odroid_system_sleep_ex(SLEEP_SHOW_ANIMATION);
 #if OFF_SAVESTATE == 1 || SD_CARD == 1
         odroid_system_emu_save_state(-1);
 #else
         odroid_system_emu_save_state(0);
 #endif
-        odroid_system_shutdown();
-        odroid_system_sleep();
+        odroid_system_sleep_ex(SLEEP_ENTER_SLEEP);
+        //clear_frames = 2;
+        open_pause_menu(game_options, _repaint);
     }
 
     if (common_emu_state.pause_after_frames > 0) {
@@ -606,10 +623,11 @@ void common_ingame_overlay(void) {
     uint8_t turbo_key;
     uint16_t by = INGAME_OVERLAY_BOX_Y;
 
-    uint16_t percentage = odroid_input_read_battery().percentage;
+    odroid_battery_state_t battery_state = odroid_input_read_battery();
+    uint16_t percentage = battery_state.percentage;
     if (percentage <= 15) {
         if ((get_elapsed_time() % 1000) < 300)
-            odroid_overlay_draw_battery(150, 90); 
+            odroid_overlay_draw_battery(battery_state, 150, 90); 
     }
     
     switch(common_emu_state.overlay)

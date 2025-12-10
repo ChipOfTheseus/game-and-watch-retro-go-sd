@@ -213,6 +213,10 @@ const lang_t lang_en_us LANG_DATA = {
     .s_CPU_Overclock_0 = "No",
     .s_CPU_Overclock_1 = "Intermediate",
     .s_CPU_Overclock_2 = "Maximum",
+    .s_Deep_Sleep = "Deep Sleep",
+    .s_Deep_Sleep_Never = "Never",
+    .s_Deep_Sleep_Always = "Always",
+    .s_Deep_Sleep_Hours = "In %d Hours",
 #if INTFLASH_BANK == 2
     .s_Reboot = "Reboot",
     .s_Original_system = "Original system",

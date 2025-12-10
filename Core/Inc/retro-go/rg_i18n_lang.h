@@ -193,6 +193,10 @@ typedef struct
     const char *s_CPU_Overclock_0;
     const char *s_CPU_Overclock_1;
     const char *s_CPU_Overclock_2;
+    const char *s_Deep_Sleep;
+    const char *s_Deep_Sleep_Never;
+    const char *s_Deep_Sleep_Always;
+    const char *s_Deep_Sleep_Hours;
 #if INTFLASH_BANK == 2
     const char *s_Reboot;
     const char *s_Original_system;

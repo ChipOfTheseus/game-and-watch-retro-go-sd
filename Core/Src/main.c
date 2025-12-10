@@ -90,6 +90,7 @@ WWDG_HandleTypeDef hwwdg1;
 /* USER CODE BEGIN PV */
 
 PERSISTENT(boot_magic) volatile uint32_t boot_magic;
+volatile bool is_hot_boot;
 uint32_t log_idx PERSISTENT(log_idx);
 char logbuf[1024 * 4] PERSISTENT(logbuf) __attribute__((aligned(4)));
 
@@ -98,6 +99,8 @@ uint32_t boot_buttons;
 uint32_t uptime_s;
 
 static bool wdog_enabled;
+
+#define ENABLE_SLEEP 1
 
 /* USER CODE END PV */
 
@@ -119,6 +122,7 @@ static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
 
 void app_main(uint8_t boot_mode);
+void app_animate_lcd_brightness(uint8_t initial, uint8_t target, uint8_t step);
 
 /* USER CODE END PFP */
 
@@ -227,15 +231,58 @@ uint32_t uptime_get(void)
   return uptime_s;
 }
 
-void GW_EnterDeepSleep(void)
+void SleepModeEnterAndResume() {
+  printf("[Sleep] Entering STOP2 mode\n");
+
+  HAL_PWREx_ClearWakeupFlag(PWR_FLAG_WKUP1);
+  HAL_PWREx_EnterSTOP2Mode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFI);
+  wdog_refresh();
+
+  printf("[Sleep] Waking up\n");
+
+  SystemClock_Config(odroid_settings_cpu_oc_level_get());
+  HAL_ResumeTick();
+  wdog_refresh();
+
+  lcd_sync();
+  lcd_init(&hspi2, &hltdc, 0);
+
+  // Keep this
+  wdog_refresh();
+  HAL_Delay(40);
+
+  lcd_swap();
+
+  // We want to keep this fade-in short because while it happens,
+  // we can't do other things like restarting audio or SD...
+  app_animate_lcd_brightness(100, odroid_display_get_backlight_raw(), 3);
+
+#if SD_CARD == 1
+  sdcard_init();
+  if (fs_mounted == false) {
+      sdcard_error_screen();
+  }
+#endif
+
+  // Restart audio
+  audio_start_playing_full_length(audio_get_buffer_full_length());
+  HAL_GPIO_WritePin(GPIO_Speaker_enable_GPIO_Port, GPIO_Speaker_enable_Pin, GPIO_PIN_SET);
+
+  printf("[Sleep] Finish waking up\n");
+}
+
+void GW_EnterDeepSleep(bool standby)
 {
+  // Turn off speaker
+  HAL_GPIO_WritePin(GPIO_Speaker_enable_GPIO_Port, GPIO_Speaker_enable_Pin, GPIO_PIN_RESET);
+
   // Stop SAI DMA (audio)
   audio_stop_playing();
 
+  lcd_backlight_off();
+
   // Enable wakup by PIN1, the power button
   HAL_PWR_EnableWakeUpPin(PWR_WAKEUP_PIN1_LOW);
-
-  lcd_backlight_off();
 
   // Leave a trace in RAM that we entered standby mode
   boot_magic = BOOT_MAGIC_STANDBY;
@@ -260,20 +307,28 @@ void GW_EnterDeepSleep(void)
   // Delay 500ms to give us a chance to attach a debugger in case
   // we end up in a suspend-loop.
   for (int i = 0; i < 10; i++) {
-      wdog_refresh();
-      HAL_Delay(50);
+    wdog_refresh();
+    HAL_Delay(50);
   }
+
   // Deinit the LCD, save power.
   lcd_deinit(&hspi2);
 
-  HAL_PWR_EnterSTANDBYMode();
+  if (standby)
+  {
+    HAL_PWREx_ClearWakeupFlag(PWR_FLAG_WKUP1);
+    HAL_PWR_EnterSTANDBYMode();
 
-  // Execution stops here, this function will not return
-  while(1) {
-    // If we for some reason survive until here, let's just reboot
-    HAL_NVIC_SystemReset();
+    // Execution stops here, this function will not return
+    while(1) {
+      // If we for some reason survive until here, let's just reboot
+      HAL_NVIC_SystemReset();
+    }
   }
-
+  else
+  {
+    SleepModeEnterAndResume();
+  }
 }
 
 // Returns buttons that were pressed at boot
@@ -320,9 +375,11 @@ int main(void)
   uint8_t trigger_wdt_bsod = 0;
   uint8_t boot_mode = BOOT_MODE_APP;
 
+#if ENABLE_FAST_BOOT == 0
   for(int i = 0; i < 1000000; i++) {
     __NOP();
   }
+#endif
 
 #if SD_CARD == 0
   // Nullpointer redzone
@@ -332,11 +389,16 @@ int main(void)
 #pragma GCC diagnostic pop
 #endif
 
+  // Reset the log write pointer
   // Don't reset the logbuf when rebooting from a watchdog reset
   if (boot_magic != BOOT_MAGIC_WATCHDOG) {
     log_idx = 0;
     logbuf[0] = '\0';
   }
+
+  printf("Log started.\n");
+
+  is_hot_boot = false;
 
   switch (boot_magic) {
   case BOOT_MAGIC_STANDBY:
@@ -349,6 +411,12 @@ int main(void)
   case BOOT_MAGIC_WATCHDOG:
     printf("Boot from watchdog reset!\nboot_magic=0x%08lx\n", boot_magic);
     trigger_wdt_bsod = 1;
+    break;
+  case BOOT_MAGIC_CORE:
+    printf("Boot from app!\n");
+    is_hot_boot = true;
+    boot_mode = BOOT_MODE_HOT;
+
     break;
   default:
     if ((boot_magic & BOOT_MAGIC_BSOD_MASK) == BOOT_MAGIC_BSOD) {
@@ -364,17 +432,24 @@ int main(void)
   // Leave a trace that indicates a warm reset
   boot_magic = BOOT_MAGIC_RESET;
 
-  // Reset the log write pointer
-  log_idx = 0;
-
   /* USER CODE END 1 */
 
+  boot_buttons = 0;
+
+  if (is_hot_boot) {
+
+  }
+
+  if (true) {
+    if (true || !is_hot_boot) {
+      printf("Boot: 1\n");
   /* MPU Configuration--------------------------------------------------------*/
   MPU_Config();
 
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  if (true || !is_hot_boot) {
   HAL_Init();
 
   /* USER CODE BEGIN Init */
@@ -385,13 +460,21 @@ int main(void)
   /* USER CODE END Init */
 
   /* Configure the system clock */
+#if ENABLE_BOOT_OC == 1
+  SystemClock_Config(2);
+#else
   SystemClock_Config(0);
+#endif
 
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
 
+  printf("Boot: 2\n");
   /* Initialize all configured peripherals */
+  
+
+  printf("Boot: 2.01\n");
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_LTDC_Init();
@@ -406,13 +489,20 @@ int main(void)
 
   /* Initialize interrupts */
   MX_NVIC_Init();
+  }
+  printf("Boot: 2.1\n");
+  }
   /* USER CODE BEGIN 2 */
 
+  printf("Boot: 2.2\n");
   // Save the button states as early as possible
   boot_buttons = buttons_get();
 
-  lcd_backlight_off();
+  
 
+  printf("Boot: 2.2.1\n");
+
+#if ENABLE_FAST_BOOT == 0
   /* Power off LCD and external Flash */
   lcd_deinit(&hspi2);
 
@@ -423,16 +513,58 @@ int main(void)
     wdog_refresh();
     HAL_Delay(50);
   }
+#endif
 
+  printf("Boot: 2.2.2\n");
   /* Power on LCD and external Flash */
-  lcd_init(&hspi2, &hltdc);
 
+  HAL_ResumeTick();
+  __enable_irq();
+  //SysTick->CTRL = 0;
+
+  //if (!is_hot_boot) {
+
+      lcd_set_buffers(framebuffer1, framebuffer2);
+
+      odroid_overlay_draw_fill_rect(0, 0, ODROID_SCREEN_WIDTH, ODROID_SCREEN_HEIGHT, 0xf800);
+
+    app_logo();
+    lcd_clone();
+
+  lcd_init(&hspi2, &hltdc, is_hot_boot ? 0 : CLEAR_BUFFERS);
+  lcd_swap();
+  lcd_sleep_while_swap_pending();
+  //}
+
+
+  if (!is_hot_boot) {
+  //lcd_backlight_off();
+  lcd_backlight_set(180);
+    //  odroid_overlay_draw_fill_rect(0, 0, ODROID_SCREEN_WIDTH, ODROID_SCREEN_HEIGHT, 0x0);
+//
+    //app_logo();
+    //lcd_clone();
+    //lcd_swap();
+  }
+
+  printf("Boot: 2.2.3\n");
+
+  printf("Boot: 2.3\n");
+
+#if ENABLE_FAST_BOOT == 1
+  // Keep this
+  wdog_refresh();
+  HAL_Delay(40);
+#else
   // Keep this
   for (int i = 0; i < 4; i++) {
     wdog_refresh();
     HAL_Delay(50);
   }
+#endif
+  printf("Boot: 2.4\n");
 
+  printf("Boot: 3\n");
   if (trigger_wdt_bsod) {
     BSOD(BSOD_WATCHDOG, 0, 0);
   }
@@ -451,7 +583,11 @@ int main(void)
   // Initialize the external flash
 
   OSPI_Init(&hospi1);
-
+  //HAL_Delay(2000);
+} else {
+  //HAL_Delay(5000);
+}
+printf("Boot: X!\n");
   #if SD_CARD == 0
   // Copy instructions and data from extflash to axiram
   void *copy_areas[3];
@@ -470,11 +606,15 @@ int main(void)
   memcpy_no_check((uint32_t *) copy_areas2[1], (uint32_t *) copy_areas2[0], copy_areas2[3]);
 #endif
 
+printf("Boot: 4\n");
   bq24072_init();
+
+  __enable_irq();
 
   switch (boot_mode) {
   case BOOT_MODE_APP:
   case BOOT_MODE_WARM:
+  case BOOT_MODE_HOT:
     wdog_enable();
     // Launch the emulator
     app_main(boot_mode);

@@ -35,6 +35,7 @@ int odroid_overlay_game_menu(odroid_dialog_choice_t *extra_options, void_callbac
 #include "gw_lcd.h"
 #include "bitmaps/font_basic.h"
 #include "gw_lcd.h"
+#include "common.h"
 #include "odroid_system.h"
 #include "odroid_overlay.h"
 #include "main.h"
@@ -236,10 +237,10 @@ void odroid_overlay_clock(int x_pos, int y_pos)
     draw_clock_digit(dst_img, hour / 10, x_pos, y_pos, curr_colors->sel_c);
 };
 
-void odroid_overlay_draw_battery(int x_pos, int y_pos)
+void odroid_overlay_draw_battery(odroid_battery_state_t battery, int x_pos, int y_pos)
 {
-    uint16_t percentage = odroid_input_read_battery().percentage;
-    odroid_battery_charge_state_t battery_state = odroid_input_read_battery().state;
+    uint16_t percentage = battery.percentage;
+    odroid_battery_charge_state_t battery_state = battery.state;
     uint16_t color_fill = curr_colors->sel_c;
     uint16_t color_border = curr_colors->sel_c;
     uint16_t color_empty = curr_colors->main_c;
@@ -711,6 +712,7 @@ int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, i
             wdog_refresh();
             HAL_Delay(50); // Poor mans debounce
             debounce = false;
+            continue;
         }
 
         if (!debounce && (last_key < 0 || ((repeat >= 30) && (repeat % 5 == 0))))
@@ -771,14 +773,15 @@ int odroid_overlay_dialog(const char *header, odroid_dialog_choice_t *options, i
             }
             else if (joystick.values[ODROID_INPUT_POWER]) // G&W POWER button
             {
+                odroid_system_sleep_ex(SLEEP_SHOW_ANIMATION);
                 sel = -1;
 #if OFF_SAVESTATE == 1 || SD_CARD == 1
                 odroid_system_emu_save_state(-1);
 #else
                 odroid_system_emu_save_state(0);
 #endif
-                odroid_system_shutdown();
-                odroid_system_sleep();
+                odroid_system_sleep_ex(SLEEP_ENTER_SLEEP);
+                common_emu_state.pause_after_frames = 2;
                 break;
             }
 
@@ -1082,10 +1085,22 @@ static void draw_game_status_bar(runtime_stats_t stats)
 
     odroid_overlay_draw_fill_rect(0, 0, ODROID_SCREEN_WIDTH, height, curr_colors->main_c);
     odroid_overlay_draw_fill_rect(0, ODROID_SCREEN_HEIGHT - height, ODROID_SCREEN_WIDTH, height, curr_colors->main_c);
-    i18n_draw_text_line(48, pad_text, width, header, curr_colors->sel_c, curr_colors->main_c, 0);
-    i18n_draw_text_line(0, ODROID_SCREEN_HEIGHT - height + pad_text, ODROID_SCREEN_WIDTH, bottom, curr_colors->sel_c, curr_colors->main_c, 0);
     odroid_overlay_clock(2, 3);
-    odroid_overlay_draw_battery(ODROID_SCREEN_WIDTH - 22, ODROID_SCREEN_HEIGHT - 13);
+    i18n_draw_text_line(48, pad_text, width, header, curr_colors->sel_c, curr_colors->main_c, 0);
+
+    odroid_battery_state_t battery_state = odroid_input_read_battery();
+    odroid_overlay_draw_battery(battery_state, ODROID_SCREEN_WIDTH - 24, pad_text + 1);
+
+    bool show_battery_percentage = battery_state.state == ODROID_BATTERY_CHARGE_STATE_DISCHARGING;
+
+    if (show_battery_percentage) {
+        snprintf(header, 60, "%u%%", battery_state.percentage);
+
+        // FIXME: calculate actual percentage text width?
+        i18n_draw_text_line(ODROID_SCREEN_WIDTH - 54, pad_text, 40, header, curr_colors->sel_c, curr_colors->main_c, 1);
+    }
+
+    i18n_draw_text_line(0, ODROID_SCREEN_HEIGHT - height + pad_text, ODROID_SCREEN_WIDTH, bottom, curr_colors->sel_c, curr_colors->main_c, 0);
 }
 
 int
@@ -1381,6 +1396,7 @@ int odroid_overlay_game_menu(odroid_dialog_choice_t *extra_options, void_callbac
         break;
 #endif
     case 90:
+        odroid_system_sleep_ex(SLEEP_SHOW_ANIMATION);
 #if OFF_SAVESTATE == 1 || SD_CARD == 1
         // Slot -1 is a common slot used only for power off/power on
         odroid_system_emu_save_state(-1);
@@ -1388,7 +1404,7 @@ int odroid_overlay_game_menu(odroid_dialog_choice_t *extra_options, void_callbac
         odroid_system_emu_save_state(0);
 #endif
         odroid_system_shutdown();
-        odroid_system_sleep();
+        odroid_system_sleep_ex(SLEEP_ENTER_STANDBY);
         break;
     case 100:
         odroid_system_switch_app(0);
@@ -1488,7 +1504,8 @@ size_t odroid_overlay_cache_file_in_ram(const char *file_path, uint8_t *dest_add
 {
     void progress_cb(uint8_t progress)
     {
-        lcd_sleep_while_swap_pending();
+        if (lcd_is_swap_pending())
+            return;
 
         odroid_overlay_draw_progress_bar(curr_lang->s_Loading_Ram, progress);
 
@@ -1496,7 +1513,7 @@ size_t odroid_overlay_cache_file_in_ram(const char *file_path, uint8_t *dest_add
         lcd_swap();
     }
 
-    return rg_storage_copy_file_to_ram((char *)file_path, dest_address, progress_cb);
+    return rg_storage_copy_file_to_ram((char *)file_path, dest_address, NULL /*progress_cb*/);
 }
 
 #endif

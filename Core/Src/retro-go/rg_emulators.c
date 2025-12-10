@@ -565,7 +565,14 @@ bool emulator_show_file_menu(retro_emulator_file_t *file)
 
     if (sel == 0) { // Resume game
         if (has_save) {
-            if ((slot = odroid_savestate_menu(curr_lang->s_Resume_game, file->path, true, &gui_redraw_callback)) != -1) {
+            // Skip slot selection screen if there's only 1 used slot
+            if (savestates->used == 1) {
+                slot = 0;
+            } else {
+                slot = odroid_savestate_menu(curr_lang->s_Resume_game, file->path, true, &gui_redraw_callback);
+            }
+
+            if (slot != -1) {
                 gui_save_current_tab();
                 emulator_start(file, true, false, slot);
             }
@@ -807,6 +814,8 @@ void emulator_start(retro_emulator_file_t *file, bool load_state, bool start_pau
       }
     }
 
+    printf("Retro-Go: Exiting emulator %s\n", system_name);
+
 #if CHEAT_CODES == 1
     for (int i = 0; i < newfile->cheat_count; i++) {
         if (newfile->cheat_codes[i]) free(newfile->cheat_codes[i]);
@@ -829,6 +838,14 @@ void emulator_start(retro_emulator_file_t *file, bool load_state, bool start_pau
 
 void emulators_init()
 {
+    emulators_count = 0;
+
+ROM_DATA = NULL;
+ROM_EXT = NULL;
+ACTIVE_FILE = NULL;
+
+shared_files = NULL;
+
     add_emulator("Nintendo Gameboy", "gb", "gb gbc", RG_LOGO_PAD_GB, RG_LOGO_HEADER_GB, NO_GAME_DATA);
     add_emulator("Nintendo Gameboy Color", "gbc", "gb gbc", RG_LOGO_PAD_GB, RG_LOGO_HEADER_GBC, NO_GAME_DATA);
     add_emulator("Nintendo Entertainment System", "nes", "nes fds nsf", RG_LOGO_PAD_NES, RG_LOGO_HEADER_NES, NO_GAME_DATA);

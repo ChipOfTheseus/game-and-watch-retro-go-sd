@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 
 #include "gw_lcd.h"
@@ -22,6 +23,21 @@ extern DAC_HandleTypeDef hdac2;
 
 uint32_t active_framebuffer;
 uint32_t frame_counter;
+
+#define HAL_DAC_ENABLED(__HANDLE__, __DAC_Channel__) \
+  (((__HANDLE__)->Instance->CR & (DAC_CR_EN1 << ((__DAC_Channel__) & 0x10UL))))
+
+uint8_t lcd_backlight_get()
+{
+#ifdef HAL_DAC_MODULE_ENABLED
+  if (!HAL_DAC_ENABLED(&hdac1, DAC_CHANNEL_1))
+    return 0;
+
+  return HAL_DAC_GetValue(&hdac1, DAC_CHANNEL_1);
+#else
+  return HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_SET ? 255 : 0;
+#endif
+}
 
 void lcd_backlight_off()
 {
@@ -92,29 +108,33 @@ void lcd_clear_buffers() {
   memset(fb2, 0, sizeof(framebuffer2));
 }
 
-void lcd_init(SPI_HandleTypeDef *spi, LTDC_HandleTypeDef *ltdc) {
+void lcd_init(SPI_HandleTypeDef *spi, LTDC_HandleTypeDef *ltdc, lcd_init_flags_t flags) {
+  printf("Boot: LCD 0, %u\n", flags);
+
+    if (true) {
+
+  
   // Disable LCD Chip select
   gw_lcd_set_chipselect(0);
-
-  // LCD reset
-  gw_lcd_set_reset(0);
 
   // Wake up !
   // Enable 1.8V &3V3 power supply
   gw_set_power_3V3(1);
-  HAL_Delay(2);
   gw_set_power_1V8(1);
-  HAL_Delay(50);
+  printf("Boot: LCD 0.1\n");
+  HAL_Delay(20);
   wdog_refresh();
 
   // Lets go, bootup sequence.
   /* reset sequence */
   gw_lcd_set_reset(0);
+  printf("Boot: LCD 1\n");
   HAL_Delay(1);
+  printf("Boot: LCD 2\n");
   gw_lcd_set_reset(1);
-  HAL_Delay(20);
+  HAL_Delay(1);
   gw_lcd_set_reset(0);
-  HAL_Delay(50);
+  HAL_Delay(1);
   wdog_refresh();
 
   gw_lcd_spi_tx(spi, (uint8_t *)"\x08\x80");
@@ -130,10 +150,14 @@ void lcd_init(SPI_HandleTypeDef *spi, LTDC_HandleTypeDef *ltdc) {
   gw_lcd_spi_tx(spi, (uint8_t *)"\x80\x00");
   gw_lcd_spi_tx(spi, (uint8_t *)"\x14\x80");
   wdog_refresh();
+    }
 
   HAL_LTDC_SetAddress(ltdc,(uint32_t) &fb1, 0);
 
-  lcd_clear_buffers();
+  if (flags & CLEAR_BUFFERS) {
+    printf("LCD: Clear buffers\n");
+    lcd_clear_buffers();
+  }
 
   HAL_LTDC_ProgramLineEvent(&hltdc, 239);
   __HAL_LTDC_ENABLE_IT(&hltdc, LTDC_IT_LI | LTDC_IT_RR);

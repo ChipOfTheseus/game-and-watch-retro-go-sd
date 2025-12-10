@@ -21,6 +21,8 @@ bool fs_mounted = false;
 static FRESULT cause;
 
 void sdcard_error_screen(void) {
+    lcd_backlight_set(180);
+    
     char buf[64];
     int idle_s = uptime_get();
 
@@ -53,7 +55,7 @@ void sdcard_error_screen(void) {
         }
     }
     app_sleep_logo();
-    GW_EnterDeepSleep();
+    GW_EnterDeepSleep(true);
 }
 
 /*************************
@@ -132,6 +134,8 @@ void sdcard_init_spi1() {
 }
 
 void sdcard_deinit_spi1() {
+    fs_mounted = false;
+
     HAL_GPIO_WritePin(SD_VCC_GPIO_Port, SD_VCC_Pin, GPIO_PIN_RESET);
     HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_RESET);
 
@@ -142,6 +146,7 @@ void sdcard_init_ospi1() {
 }
 
 void sdcard_deinit_ospi1() {
+    fs_mounted = false;
 }
 
 void switch_ospi_gpio(uint8_t ToOspi) {

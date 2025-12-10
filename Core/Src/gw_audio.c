@@ -20,6 +20,10 @@ void HAL_SAI_TxCpltCallback(SAI_HandleTypeDef *hsai) {
     dma_state = DMA_TRANSFER_STATE_TC;
 }
 
+uint16_t audio_get_buffer_full_length() {
+    return audiobuffer_full_length;
+}
+
 // returns length of active buffer
 uint16_t audio_get_buffer_length() {
     bool isFirstHalf = (dma_state == DMA_TRANSFER_STATE_HF) ? true : false;

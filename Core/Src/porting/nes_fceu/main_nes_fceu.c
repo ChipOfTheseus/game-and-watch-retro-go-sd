@@ -853,6 +853,21 @@ int app_main_nes_fceu(uint8_t load_state, uint8_t start_paused, int8_t save_slot
 
         FCEUI_Emulate(&gfx, &sound, &ssize, !drawFrame);
 
+        if (common_emu_state.pause_after_frames > 0) {
+            (common_emu_state.pause_after_frames)--;
+            if (common_emu_state.pause_after_frames == 0) {
+                // PAUSE/SET has been released without performing any macro. Launch menu
+                //pause_pressed = false;
+                
+                odroid_overlay_game_menu(options, &_blit);
+                //clear_frames = 2;
+                
+                common_emu_state.startup_frames = 0;
+                cpumon_stats.last_busy = 0;
+            }
+        }
+
+
         if (drawFrame)
         {
             _blit();

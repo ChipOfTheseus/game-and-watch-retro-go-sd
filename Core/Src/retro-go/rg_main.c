@@ -32,13 +32,17 @@
 
 static bool GLOBAL_DATA main_menu_cpu_oc_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
 {
-    if (sdcard_hw_type == SDCARD_HW_OSPI1) {
+    if (sdcard_hw_type == SDCARD_HW_OSPI1)
+    {
         // Current SD Card design over OSPI1 crash with overclocking,
         // do not allow oc with it until a new flex PCB fix that
         sprintf(option->value, "%s", curr_lang->s_CPU_Overclock_0);
-    } else {
+    }
+    else
+    {
         int cpu_oc = odroid_settings_cpu_oc_level_get();
-        if (event == ODROID_DIALOG_PREV) {
+        if (event == ODROID_DIALOG_PREV)
+        {
             if (cpu_oc > 0)
                 cpu_oc--;
             else
@@ -46,7 +50,8 @@ static bool GLOBAL_DATA main_menu_cpu_oc_cb(odroid_dialog_choice_t *option, odro
             SystemClock_Config(cpu_oc);
             odroid_settings_cpu_oc_level_set(cpu_oc);
         }
-        else if (event == ODROID_DIALOG_NEXT) {
+        else if (event == ODROID_DIALOG_NEXT)
+        {
             if (cpu_oc < 2)
                 cpu_oc++;
             else
@@ -54,7 +59,8 @@ static bool GLOBAL_DATA main_menu_cpu_oc_cb(odroid_dialog_choice_t *option, odro
             SystemClock_Config(cpu_oc);
             odroid_settings_cpu_oc_level_set(cpu_oc);
         }
-        switch (cpu_oc) {
+        switch (cpu_oc)
+        {
         case 1:
             sprintf(option->value, "%s", curr_lang->s_CPU_Overclock_1);
             break;
@@ -90,6 +96,63 @@ static bool GLOBAL_DATA main_menu_timeout_cb(odroid_dialog_choice_t *option, odr
     return event == ODROID_DIALOG_ENTER;
 }
 
+static bool GLOBAL_DATA standby_sleep_timeout_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
+{
+    const int TIMEOUT_STEP = 60;
+    const int TIMEOUT_MIN = 0;
+    const int TIMEOUT_MAX = 2160; // 36 hours
+    const int TIMEOUT_ALWAYS = 0xffff;
+
+    int timeout = 600; // odroid_settings_StandbySleepTimeoutMinutes_get();
+    if (event == ODROID_DIALOG_PREV)
+    {
+        switch (timeout)
+        {
+        case 0:
+            timeout = TIMEOUT_ALWAYS;
+            break;
+        case TIMEOUT_ALWAYS:
+            timeout = TIMEOUT_MAX;
+            break;
+        default:
+            timeout = MAX(timeout - TIMEOUT_STEP, TIMEOUT_MIN);
+            break;
+        }
+
+        // odroid_settings_StandbySleepTimeoutMinutes_set(timeout);
+    }
+    else if (event == ODROID_DIALOG_NEXT)
+    {
+        if (timeout == TIMEOUT_ALWAYS)
+        {
+            timeout = 0;
+        }
+        else
+        {
+            timeout = timeout + TIMEOUT_STEP;
+            if (timeout > TIMEOUT_MAX)
+            {
+                timeout = TIMEOUT_ALWAYS;
+            }
+        }
+
+        // odroid_settings_StandbySleepTimeoutMinutes_set(timeout);
+    }
+    switch (timeout)
+    {
+    case 0:
+        sprintf(option->value, "%s", curr_lang->s_Deep_Sleep_Never);
+        break;
+    case TIMEOUT_ALWAYS:
+        sprintf(option->value, "%s", curr_lang->s_Deep_Sleep_Always);
+        break;
+    default:
+        sprintf(option->value, curr_lang->s_Deep_Sleep_Hours, /*odroid_settings_StandbySleepTimeoutMinutes_get()*/ 600 / TIMEOUT_STEP);
+        break;
+    }
+
+    return event == ODROID_DIALOG_ENTER;
+}
 
 #if COVERFLOW != 0
 
@@ -175,7 +238,6 @@ static bool GLOBAL_DATA font_update_cb(odroid_dialog_choice_t *option, odroid_di
     return event == ODROID_DIALOG_ENTER;
 }
 
-
 static bool GLOBAL_DATA lang_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
 {
     int8_t lang = odroid_settings_lang_get();
@@ -197,10 +259,12 @@ static bool GLOBAL_DATA lang_update_cb(odroid_dialog_choice_t *option, odroid_di
 
 bool GLOBAL_DATA hour_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
 {
-    if (event == ODROID_DIALOG_PREV) {
+    if (event == ODROID_DIALOG_PREV)
+    {
         GW_AddToCurrentHour(-1);
     }
-    else if (event == ODROID_DIALOG_NEXT) {
+    else if (event == ODROID_DIALOG_NEXT)
+    {
         GW_AddToCurrentHour(1);
     }
 
@@ -210,10 +274,12 @@ bool GLOBAL_DATA hour_update_cb(odroid_dialog_choice_t *option, odroid_dialog_ev
 
 bool GLOBAL_DATA minute_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
 {
-    if (event == ODROID_DIALOG_PREV) {
+    if (event == ODROID_DIALOG_PREV)
+    {
         GW_AddToCurrentMinute(-1);
     }
-    else if (event == ODROID_DIALOG_NEXT) {
+    else if (event == ODROID_DIALOG_NEXT)
+    {
         GW_AddToCurrentMinute(1);
     }
 
@@ -223,10 +289,12 @@ bool GLOBAL_DATA minute_update_cb(odroid_dialog_choice_t *option, odroid_dialog_
 
 bool GLOBAL_DATA second_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
 {
-    if (event == ODROID_DIALOG_PREV) {
+    if (event == ODROID_DIALOG_PREV)
+    {
         GW_AddToCurrentSecond(-1);
     }
-    else if (event == ODROID_DIALOG_NEXT) {
+    else if (event == ODROID_DIALOG_NEXT)
+    {
         GW_AddToCurrentSecond(1);
     }
 
@@ -236,10 +304,12 @@ bool GLOBAL_DATA second_update_cb(odroid_dialog_choice_t *option, odroid_dialog_
 
 bool GLOBAL_DATA day_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
 {
-    if (event == ODROID_DIALOG_PREV) {
+    if (event == ODROID_DIALOG_PREV)
+    {
         GW_AddToCurrentDay(-1);
     }
-    else if (event == ODROID_DIALOG_NEXT) {
+    else if (event == ODROID_DIALOG_NEXT)
+    {
         GW_AddToCurrentDay(1);
     }
 
@@ -249,17 +319,19 @@ bool GLOBAL_DATA day_update_cb(odroid_dialog_choice_t *option, odroid_dialog_eve
 
 bool GLOBAL_DATA weekday_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
 {
-    const char * GW_RTC_Weekday[] = {curr_lang->s_Weekday_Mon, curr_lang->s_Weekday_Tue, curr_lang->s_Weekday_Wed, curr_lang->s_Weekday_Thu, curr_lang->s_Weekday_Fri, curr_lang->s_Weekday_Sat, curr_lang->s_Weekday_Sun};
-    sprintf(option->value, "%s", (char *) GW_RTC_Weekday[GW_GetCurrentWeekday() - 1]);
+    const char *GW_RTC_Weekday[] = {curr_lang->s_Weekday_Mon, curr_lang->s_Weekday_Tue, curr_lang->s_Weekday_Wed, curr_lang->s_Weekday_Thu, curr_lang->s_Weekday_Fri, curr_lang->s_Weekday_Sat, curr_lang->s_Weekday_Sun};
+    sprintf(option->value, "%s", (char *)GW_RTC_Weekday[GW_GetCurrentWeekday() - 1]);
     return event == ODROID_DIALOG_ENTER;
 }
 
 bool GLOBAL_DATA month_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
 {
-    if (event == ODROID_DIALOG_PREV) {
+    if (event == ODROID_DIALOG_PREV)
+    {
         GW_AddToCurrentMonth(-1);
     }
-    else if (event == ODROID_DIALOG_NEXT) {
+    else if (event == ODROID_DIALOG_NEXT)
+    {
         GW_AddToCurrentMonth(1);
     }
 
@@ -269,16 +341,17 @@ bool GLOBAL_DATA month_update_cb(odroid_dialog_choice_t *option, odroid_dialog_e
 
 bool GLOBAL_DATA year_update_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
 {
-    if (event == ODROID_DIALOG_PREV) {
+    if (event == ODROID_DIALOG_PREV)
+    {
         GW_AddToCurrentYear(-1);
     }
-    else if (event == ODROID_DIALOG_NEXT) {
+    else if (event == ODROID_DIALOG_NEXT)
+    {
         GW_AddToCurrentYear(1);
     }
 
     sprintf(option->value, "20%02d", GW_GetCurrentYear());
     return event == ODROID_DIALOG_ENTER;
-
 }
 
 bool GLOBAL_DATA time_display_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
@@ -289,8 +362,8 @@ bool GLOBAL_DATA time_display_cb(odroid_dialog_choice_t *option, odroid_dialog_e
 
 bool GLOBAL_DATA date_display_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
 {
-    const char * GW_RTC_Weekday[] = {curr_lang->s_Weekday_Mon, curr_lang->s_Weekday_Tue, curr_lang->s_Weekday_Wed, curr_lang->s_Weekday_Thu, curr_lang->s_Weekday_Fri, curr_lang->s_Weekday_Sat, curr_lang->s_Weekday_Sun};
-    curr_lang->fmtDate(option->value, curr_lang->s_Date_Format, GW_GetCurrentDay(), GW_GetCurrentMonth(), GW_GetCurrentYear(), (char *) GW_RTC_Weekday[GW_GetCurrentWeekday() - 1]);
+    const char *GW_RTC_Weekday[] = {curr_lang->s_Weekday_Mon, curr_lang->s_Weekday_Tue, curr_lang->s_Weekday_Wed, curr_lang->s_Weekday_Thu, curr_lang->s_Weekday_Fri, curr_lang->s_Weekday_Sat, curr_lang->s_Weekday_Sun};
+    curr_lang->fmtDate(option->value, curr_lang->s_Date_Format, GW_GetCurrentDay(), GW_GetCurrentMonth(), GW_GetCurrentYear(), (char *)GW_RTC_Weekday[GW_GetCurrentWeekday() - 1]);
     return event == ODROID_DIALOG_ENTER;
 }
 
@@ -321,11 +394,11 @@ void GLOBAL_DATA soft_reset_do(void)
 static void GLOBAL_DATA enable_full_debug_clock()
 {
     DBGMCU->CR = DBGMCU_CR_DBG_SLEEPCD |
-                    DBGMCU_CR_DBG_STOPCD |
-                    DBGMCU_CR_DBG_STANDBYCD |
-                    DBGMCU_CR_DBG_TRACECKEN |
-                    DBGMCU_CR_DBG_CKCDEN |
-                    DBGMCU_CR_DBG_CKSRDEN;
+                 DBGMCU_CR_DBG_STOPCD |
+                 DBGMCU_CR_DBG_STANDBYCD |
+                 DBGMCU_CR_DBG_TRACECKEN |
+                 DBGMCU_CR_DBG_CKCDEN |
+                 DBGMCU_CR_DBG_CKSRDEN;
 }
 
 // This ensures that we are able to catch the cpu while it is waiting for interrupts aka __WFI
@@ -351,7 +424,8 @@ static void GLOBAL_DATA update_debug_clock()
 static bool GLOBAL_DATA debug_menu_debug_clock_cb(odroid_dialog_choice_t *option, odroid_dialog_event_t event, uint32_t repeat)
 {
     bool always_on = odroid_settings_DebugMenuDebugClockAlwaysOn_get();
-    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT) {
+    if (event == ODROID_DIALOG_PREV || event == ODROID_DIALOG_NEXT)
+    {
         always_on = !always_on;
         odroid_settings_DebugMenuDebugClockAlwaysOn_set(always_on);
         update_debug_clock();
@@ -393,24 +467,24 @@ static void GLOBAL_DATA handle_debug_menu()
     snprintf(jedec_id_str, sizeof(jedec_id_str), "%02X %02X %02X", jedec_id[0], jedec_id[1], jedec_id[2]);
     snprintf(status_str, sizeof(status_str), "0x%02X", status);
     snprintf(config_str, sizeof(config_str), "0x%02X", config);
-    snprintf(flash_size_str, sizeof(flash_size_str), "%ld MB", OSPI_GetFlashSize() / (1024*1024));
+    snprintf(flash_size_str, sizeof(flash_size_str), "%ld MB", OSPI_GetFlashSize() / (1024 * 1024));
     snprintf(erase_size_str, sizeof(erase_size_str), "%ld kB", OSPI_GetSmallestEraseSize() / 1024);
     snprintf(dbgmcu_id_str, sizeof(dbgmcu_id_str), "0x%08lX", DBGMCU->IDCODE);
 
     odroid_dialog_choice_t debuginfo[] = {
-            {-1, curr_lang->s_Flash_JEDEC_ID, (char *)jedec_id_str, 0, NULL},
-            {-1, curr_lang->s_Flash_Name, (char *)OSPI_GetFlashName(), 0, NULL},
-            {-1, curr_lang->s_Flash_SR, (char *)status_str, 0, NULL},
-            {-1, curr_lang->s_Flash_CR, (char *)config_str, 0, NULL},
-            {-1, curr_lang->s_Flash_Size, flash_size_str, 0, NULL},
-            {-1, curr_lang->s_Smallest_erase, erase_size_str, 0, NULL},
-            ODROID_DIALOG_CHOICE_SEPARATOR,
-            {-1, curr_lang->s_DBGMCU_IDCODE, dbgmcu_id_str, 0, NULL},
-            {-1, curr_lang->s_DBGMCU_CR, dbgmcu_cr_str, 0, debug_menu_debug_cr_cb},
-            {1, curr_lang->s_DBGMCU_clock, dbgmcu_clock_str, 1, debug_menu_debug_clock_cb},
-            ODROID_DIALOG_CHOICE_SEPARATOR,
-            {0, curr_lang->s_Close, "", 1, NULL},
-            ODROID_DIALOG_CHOICE_LAST};
+        {-1, curr_lang->s_Flash_JEDEC_ID, (char *)jedec_id_str, 0, NULL},
+        {-1, curr_lang->s_Flash_Name, (char *)OSPI_GetFlashName(), 0, NULL},
+        {-1, curr_lang->s_Flash_SR, (char *)status_str, 0, NULL},
+        {-1, curr_lang->s_Flash_CR, (char *)config_str, 0, NULL},
+        {-1, curr_lang->s_Flash_Size, flash_size_str, 0, NULL},
+        {-1, curr_lang->s_Smallest_erase, erase_size_str, 0, NULL},
+        ODROID_DIALOG_CHOICE_SEPARATOR,
+        {-1, curr_lang->s_DBGMCU_IDCODE, dbgmcu_id_str, 0, NULL},
+        {-1, curr_lang->s_DBGMCU_CR, dbgmcu_cr_str, 0, debug_menu_debug_cr_cb},
+        {1, curr_lang->s_DBGMCU_clock, dbgmcu_clock_str, 1, debug_menu_debug_clock_cb},
+        ODROID_DIALOG_CHOICE_SEPARATOR,
+        {0, curr_lang->s_Close, "", 1, NULL},
+        ODROID_DIALOG_CHOICE_LAST};
 
     odroid_overlay_dialog(curr_lang->s_Debug_Title, debuginfo, -1, &gui_redraw_callback);
     odroid_settings_commit();
@@ -420,22 +494,22 @@ static void GLOBAL_DATA handle_about_menu()
 {
     char dialog_title[128];
     odroid_dialog_choice_t choices[] = {
-            {-1, curr_lang->s_Author, "ducalex", 0, NULL},
-            {-1, curr_lang->s_Author_, "kbeckmann", 0, NULL},
-            {-1, curr_lang->s_Author_, "stacksmashing", 0, NULL},
-            {-1, curr_lang->s_Author_, "Sylver Bruneau", 0, NULL},
-            {-1, curr_lang->s_Author_, "bzhxx", 0, NULL},
-            {-1, curr_lang->s_Author_, "Benjamin Sølberg", 0, NULL},
-            {-1, curr_lang->s_Author_, "Brian Pugh", 0, NULL},
-            {-1, curr_lang->s_UI_Mod, "orzeus", 0, NULL},
-            ODROID_DIALOG_CHOICE_SEPARATOR,
-            {-1, curr_lang->s_Lang, (char *)curr_lang->s_LangAuthor, 0, NULL},
-            ODROID_DIALOG_CHOICE_SEPARATOR,
-            {2, curr_lang->s_Debug_menu, "", 1, NULL},
-            {1, curr_lang->s_Reset_settings, "", 1, NULL},
-            ODROID_DIALOG_CHOICE_SEPARATOR,
-            {0, curr_lang->s_Close, "", 1, NULL},
-            ODROID_DIALOG_CHOICE_LAST};
+        {-1, curr_lang->s_Author, "ducalex", 0, NULL},
+        {-1, curr_lang->s_Author_, "kbeckmann", 0, NULL},
+        {-1, curr_lang->s_Author_, "stacksmashing", 0, NULL},
+        {-1, curr_lang->s_Author_, "Sylver Bruneau", 0, NULL},
+        {-1, curr_lang->s_Author_, "bzhxx", 0, NULL},
+        {-1, curr_lang->s_Author_, "Benjamin Sølberg", 0, NULL},
+        {-1, curr_lang->s_Author_, "Brian Pugh", 0, NULL},
+        {-1, curr_lang->s_UI_Mod, "orzeus", 0, NULL},
+        ODROID_DIALOG_CHOICE_SEPARATOR,
+        {-1, curr_lang->s_Lang, (char *)curr_lang->s_LangAuthor, 0, NULL},
+        ODROID_DIALOG_CHOICE_SEPARATOR,
+        {2, curr_lang->s_Debug_menu, "", 1, NULL},
+        {1, curr_lang->s_Reset_settings, "", 1, NULL},
+        ODROID_DIALOG_CHOICE_SEPARATOR,
+        {0, curr_lang->s_Close, "", 1, NULL},
+        ODROID_DIALOG_CHOICE_LAST};
 
     snprintf(dialog_title, sizeof(dialog_title), curr_lang->s_Retro_Go, GIT_TAG);
     int sel = odroid_overlay_dialog(dialog_title, choices, -1, &gui_redraw_callback);
@@ -445,9 +519,9 @@ static void GLOBAL_DATA handle_about_menu()
         if (odroid_overlay_confirm(curr_lang->s_Confirm_Reset_settings, false, &gui_redraw_callback) == 1)
         {
             odroid_settings_reset();
-            #if SD_CARD == 1
-                flash_alloc_reset();
-            #endif
+#if SD_CARD == 1
+            flash_alloc_reset();
+#endif
             odroid_system_switch_app(0); // reset
         }
     }
@@ -467,6 +541,7 @@ static void GLOBAL_DATA handle_options_menu()
     char colors_value[16];
     char lang_value[64];
     char ov_value[64];
+    char standby_sleep_timeout_value[64];
 
     odroid_dialog_choice_t choices[] = {
         ODROID_DIALOG_CHOICE_SEPARATOR,
@@ -480,6 +555,7 @@ static void GLOBAL_DATA handle_options_menu()
         {0, curr_lang->s_Idle_power_off, timeout_value, 1, &main_menu_timeout_cb},
         ODROID_DIALOG_CHOICE_SEPARATOR,
         {0, curr_lang->s_CPU_Overclock, ov_value, 1, &main_menu_cpu_oc_cb},
+        {0, curr_lang->s_Deep_Sleep, standby_sleep_timeout_value, 1, &standby_sleep_timeout_cb},
 #if INTFLASH_BANK == 2
     //{9, curr_lang->s_Reboot, curr_lang->s_Original_system, 1, NULL},
 #endif
@@ -509,9 +585,9 @@ static void GLOBAL_DATA handle_time_menu()
     char date_str[24];
 
     odroid_dialog_choice_t rtcinfo[] = {
-            {0, curr_lang->s_Time, time_str, 1, &time_display_cb},
-            {1, curr_lang->s_Date, date_str, 1, &date_display_cb},
-            ODROID_DIALOG_CHOICE_LAST};
+        {0, curr_lang->s_Time, time_str, 1, &time_display_cb},
+        {1, curr_lang->s_Date, date_str, 1, &date_display_cb},
+        ODROID_DIALOG_CHOICE_LAST};
     int sel = odroid_overlay_dialog(curr_lang->s_Time_Title, rtcinfo, 0, &gui_redraw_callback);
 
     if (sel == 0)
@@ -522,10 +598,10 @@ static void GLOBAL_DATA handle_time_menu()
 
         // Time setup
         odroid_dialog_choice_t timeoptions[8] = {
-                {0, curr_lang->s_Hour, hour_value, 1, &hour_update_cb},
-                {1, curr_lang->s_Minute, minute_value, 1, &minute_update_cb},
-                {2, curr_lang->s_Second, second_value, 1, &second_update_cb},
-                ODROID_DIALOG_CHOICE_LAST};
+            {0, curr_lang->s_Hour, hour_value, 1, &hour_update_cb},
+            {1, curr_lang->s_Minute, minute_value, 1, &minute_update_cb},
+            {2, curr_lang->s_Second, second_value, 1, &second_update_cb},
+            ODROID_DIALOG_CHOICE_LAST};
         sel = odroid_overlay_dialog(curr_lang->s_Time_setup, timeoptions, 0, &gui_redraw_callback);
     }
     else if (sel == 1)
@@ -538,11 +614,11 @@ static void GLOBAL_DATA handle_time_menu()
 
         // Date setup
         odroid_dialog_choice_t dateoptions[8] = {
-                {2, curr_lang->s_Year, year_value, 1, &year_update_cb},
-                {1, curr_lang->s_Month, month_value, 1, &month_update_cb},
-                {0, curr_lang->s_Day, day_value, 1, &day_update_cb},
-                {-1, curr_lang->s_Weekday, weekday_value, 0, &weekday_update_cb},
-                ODROID_DIALOG_CHOICE_LAST};
+            {2, curr_lang->s_Year, year_value, 1, &year_update_cb},
+            {1, curr_lang->s_Month, month_value, 1, &month_update_cb},
+            {0, curr_lang->s_Day, day_value, 1, &day_update_cb},
+            {-1, curr_lang->s_Weekday, weekday_value, 0, &weekday_update_cb},
+            ODROID_DIALOG_CHOICE_LAST};
         sel = odroid_overlay_dialog(curr_lang->s_Date_setup, dateoptions, 0, &gui_redraw_callback);
     }
 }
@@ -590,7 +666,9 @@ void retro_loop()
             if (!tab->initialized)
             {
                 gui_init_tab(tab);
-            } else {
+            }
+            else
+            {
                 gui_refresh_tab(tab);
             }
 
@@ -622,7 +700,7 @@ void retro_loop()
             int key_right = ODROID_INPUT_RIGHT;
 #if COVERFLOW != 0
             int hori_view = odroid_settings_theme_get();
-            if ((hori_view== 2) | (hori_view==3))
+            if ((hori_view == 2) | (hori_view == 3))
             {
                 key_up = ODROID_INPUT_LEFT;
                 key_down = ODROID_INPUT_RIGHT;
@@ -725,7 +803,7 @@ void retro_loop()
 #if DISABLE_SPLASH_SCREEN == 0
 void GLOBAL_DATA app_start_logo()
 {
-    const int16_t logos[] =   {RG_LOGO_NINTENDO,  RG_LOGO_SEGA,          RG_LOGO_NINTENDO,   RG_LOGO_SEGA,      RG_LOGO_NINTENDO,  RG_LOGO_PCE,        RG_LOGO_SEGA,       RG_LOGO_COLECO,     RG_LOGO_MICROSOFT,  RG_LOGO_WATARA,     RG_LOGO_SEGA,       RG_LOGO_ATARI,        RG_LOGO_AMSTRAD,        RG_LOGO_TAMA};
+    const int16_t logos[] = {RG_LOGO_NINTENDO, RG_LOGO_SEGA, RG_LOGO_NINTENDO, RG_LOGO_SEGA, RG_LOGO_NINTENDO, RG_LOGO_PCE, RG_LOGO_SEGA, RG_LOGO_COLECO, RG_LOGO_MICROSOFT, RG_LOGO_WATARA, RG_LOGO_SEGA, RG_LOGO_ATARI, RG_LOGO_AMSTRAD, RG_LOGO_TAMA};
     const int16_t headers[] = {RG_LOGO_HEADER_GB, RG_LOGO_HEADER_SG1000, RG_LOGO_HEADER_NES, RG_LOGO_HEADER_GG, RG_LOGO_HEADER_GW, RG_LOGO_HEADER_PCE, RG_LOGO_HEADER_SMS, RG_LOGO_HEADER_COL, RG_LOGO_HEADER_MSX, RG_LOGO_HEADER_WSV, RG_LOGO_HEADER_GEN, RG_LOGO_HEADER_A7800, RG_LOGO_HEADER_AMSTRAD, RG_LOGO_HEADER_TAMA};
     retro_logo_image *logo;
     odroid_overlay_draw_fill_rect(0, 0, ODROID_SCREEN_WIDTH, ODROID_SCREEN_HEIGHT, curr_colors->bg_c);
@@ -752,71 +830,115 @@ void GLOBAL_DATA app_start_logo()
 void GLOBAL_DATA app_logo()
 {
     odroid_overlay_draw_fill_rect(0, 0, ODROID_SCREEN_WIDTH, ODROID_SCREEN_HEIGHT, curr_colors->bg_c);
-    retro_logo_image *logo;
 
-    for (int i = 1; i <= 10; i++)
+    void _draw_logos(int darken)
     {
+        retro_logo_image *logo;
+
         logo = rg_get_logo(RG_LOGO_GNW);
         if (!logo)
             return;
-        odroid_overlay_draw_logo((ODROID_SCREEN_WIDTH - logo->width) / 2, 90, RG_LOGO_GNW, 
-            get_darken_pixel_d(curr_colors->sel_c, curr_colors->bg_c, i * 10));
+        odroid_overlay_draw_logo((ODROID_SCREEN_WIDTH - logo->width) / 2, 90, RG_LOGO_GNW,
+                                 get_darken_pixel_d(curr_colors->dis_c, curr_colors->bg_c, darken));
 
         logo = rg_get_logo(RG_LOGO_RGO);
         if (!logo)
             return;
-        odroid_overlay_draw_logo((ODROID_SCREEN_WIDTH - logo->width) / 2, 174, RG_LOGO_RGO, 
-           get_darken_pixel_d(curr_colors->dis_c,curr_colors->bg_c, i * 10));
+        odroid_overlay_draw_logo((ODROID_SCREEN_WIDTH - logo->width) / 2, 174, RG_LOGO_RGO,
+                                 get_darken_pixel_d(curr_colors->dis_c, curr_colors->bg_c, darken));
 
         lcd_sync();
         lcd_swap();
+    }
+
+#if DISABLE_APP_LOGO == 0
+    for (int i = 1; i <= 10; i++)
+    {
+        _draw_logos(i * 10);
+
         wdog_refresh();
         HAL_Delay(i * 2);
     }
+
     for (int i = 0; i < 20; i++)
     {
         wdog_refresh();
         HAL_Delay(10);
     }
+#else
+    _draw_logos(100);
+#endif
+}
+
+void GLOBAL_DATA app_animate_lcd_brightness(uint8_t initial, uint8_t target, uint8_t step)
+{
+    const int step_delay = 5;
+    int current = initial;
+
+    while (1)
+    {
+        if (initial > target)
+        {
+            current -= step;
+            if (current <= target)
+            {
+                current = target;
+                break;
+            }
+        }
+        else
+        {
+            current += step;
+            if (current >= target)
+            {
+                current = target;
+                break;
+            }
+        }
+
+        lcd_backlight_set(current);
+        wdog_refresh();
+        HAL_Delay(step_delay);
+    }
+
+    wdog_refresh();
+    if (current <= 100)
+    {
+        lcd_backlight_off();
+    }
+    else
+    {
+        lcd_backlight_set(current);
+    }
 }
 
 void GLOBAL_DATA app_sleep_logo()
 {
-    retro_logo_image *logo;
-    // As we will use ram_alloc, make sure ram_start pointer is valid
-    if (ram_start == 0) {
-        ram_start = (uint32_t)&__RAM_EMU_START__;
-    }
-    for (int i = 10; i <= 100; i+=2)
-    {
-        logo = rg_get_logo(RG_LOGO_GNW);
-        if (!logo)
-            return;
-
-        lcd_sleep_while_swap_pending();
-        odroid_overlay_draw_fill_rect(0, 0, ODROID_SCREEN_WIDTH, ODROID_SCREEN_HEIGHT, curr_colors->bg_c);
-        odroid_overlay_draw_logo((ODROID_SCREEN_WIDTH - logo->width) / 2, 90, RG_LOGO_GNW,
-            get_darken_pixel_d(curr_colors->sel_c, curr_colors->bg_c, 110 - i));
-
-        logo = rg_get_logo(RG_LOGO_RGO);
-        if (!logo)
-            return;
-
-        odroid_overlay_draw_logo((ODROID_SCREEN_WIDTH - logo->width) / 2, 174, RG_LOGO_RGO, 
-           get_darken_pixel_d(curr_colors->dis_c,curr_colors->bg_c, 110 - i));
-
-        lcd_swap();
-        wdog_refresh();
-        HAL_Delay(i / 10);
-    }
+    app_animate_lcd_brightness(odroid_display_get_backlight_raw(), 50, 2);
 }
 
 void GLOBAL_DATA app_main(uint8_t boot_mode)
 {
-    lcd_set_buffers(framebuffer1, framebuffer2);
-    sdcard_init();
+    if (boot_mode == BOOT_MODE_HOT)
+    {
+        printf("Hot boot from emulator\n");
+    }
+
+    uint8_t lcd_brightness = lcd_backlight_get();
     odroid_system_init(ODROID_APPID_LAUNCHER, 32000);
-    odroid_overlay_draw_fill_rect(0, 0, ODROID_SCREEN_WIDTH, ODROID_SCREEN_HEIGHT, curr_colors->bg_c);
+    if (boot_mode == BOOT_MODE_HOT) {
+        if (lcd_brightness != 0) {
+            lcd_backlight_set(lcd_brightness);
+        }
+    }
+
+    if (true || boot_mode != BOOT_MODE_HOT)
+    {
+        odroid_overlay_draw_fill_rect(0, 0, ODROID_SCREEN_WIDTH, ODROID_SCREEN_HEIGHT, curr_colors->bg_c);
+
+        app_logo();
+        lcd_swap();
+    }
 
     // if OFW is present, write "BOOT" to RTC backup register to always boot to Retro-Go
     // Check game_and_watch_patch project for more details
@@ -833,39 +955,48 @@ void GLOBAL_DATA app_main(uint8_t boot_mode)
     // Initialize GUI colors based on OFW type
     gui_init_colors();
 
-    if (fs_mounted == false) {
+    if (boot_mode != BOOT_MODE_HOT)
+    {
+        sdcard_deinit_spi1();
+        sdcard_deinit_ospi1();
+    }
+    sdcard_init();
+    if (fs_mounted == false)
+    {
         sdcard_error_screen();
     }
 
     // Re-initialize system now that the filesystem is mounted
     // and apply the correct CPU overclocking level.
     odroid_system_init(ODROID_APPID_LAUNCHER, 32000);
-    uint8_t oc = odroid_settings_cpu_oc_level_get();
-    SystemClock_Config(oc);
 
     emulators_init();
-
-    app_logo();
-
-#if DISABLE_SPLASH_SCREEN == 0
-    if (boot_mode != BOOT_MODE_WARM)
-        app_start_logo();
-#endif
 
     // Start the previously running emulator directly if it's a valid pointer.
     // If the user holds down the TIME button during startup,start the retro-go
     // gui instead of the last ROM as a fallback.
     char *startup_file = odroid_settings_StartupFile_get();
     retro_emulator_file_t *file = NULL;
-    if (strlen(startup_file) > 0) {
+    if (strlen(startup_file) > 0)
+    {
         file = emulator_get_file(startup_file);
     }
 
-    if ((file != NULL) && ((GW_GetBootButtons() & B_TIME) == 0)) {
+    uint8_t oc = odroid_settings_cpu_oc_level_get();
+    SystemClock_Config(oc);
+
+    bool emulator_started = (file != NULL) && ((GW_GetBootButtons() & B_TIME) == 0);
+    if (emulator_started)
+    {
         emulator_start(file, true, true, -1);
     }
     else
     {
+#if DISABLE_SPLASH_SCREEN == 0
+        if (boot_mode != BOOT_MODE_WARM && boot_mode != BOOT_MODE_HOT)
+            app_start_logo();
+#endif
+
         retro_loop();
     }
 }

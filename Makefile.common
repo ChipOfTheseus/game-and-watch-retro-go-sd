@@ -39,6 +39,15 @@ endif
 # Disable system logos splash screen at startup
 DISABLE_SPLASH_SCREEN ?= 0
 
+# Disable pause when showing app logo when waking from sleep
+DISABLE_APP_LOGO ?= 0
+
+# Force max CPU overclock during boot (will reset to configured value after boot)
+ENABLE_BOOT_OC ?= 0
+
+# Avoid delays and boot directly to bank unless TIME+PAUSE/SET combo is pressed
+ENABLE_FAST_BOOT ?= 0
+
 # Default NES emulator is fceumm
 FORCE_NOFRENDO ?= 0 
 NOFRENDO_PARAM := --nofrendo=$(FORCE_NOFRENDO)
@@ -461,6 +470,9 @@ C_DEFS +=  \
 -DCHEAT_CODES=$(CHEAT_CODES) \
 -DFORCE_NOFRENDO=$(FORCE_NOFRENDO) \
 -DDISABLE_SPLASH_SCREEN=$(DISABLE_SPLASH_SCREEN) \
+-DDISABLE_APP_LOGO=$(DISABLE_APP_LOGO) \
+-DENABLE_BOOT_OC=$(ENABLE_BOOT_OC) \
+-DENABLE_FAST_BOOT=$(ENABLE_FAST_BOOT) \
 -DTARGET_GNW \
 -DNO_EMBEDDED_SAMPLES \
 -D__LIBRETRO__ \
@@ -800,13 +812,13 @@ $(BUILD_DIR)/a2600/%.o: %.cxx Makefile Makefile.common $(SDK_HEADERS) | $(BUILD_
 # Zelda3 configuration
 
 # Limit to 30 fps for improved stability
-ZELDA3_LIMIT_30FPS ?= 1
+ZELDA3_LIMIT_30FPS ?= 0
 
 # Increase UI speed (item menu, etc.)
 ZELDA3_FASTER_UI ?= 1
 
 # Display battery indicator in item menu
-ZELDA3_BATTERY_INDICATOR ?= 1
+ZELDA3_BATTERY_INDICATOR ?= 0
 
 # Item switch on L/R. Also allows reordering of items in inventory by pressing Y+direction.
 # Hold X, L, or R inside of the item selection screen to assign items to those buttons.
@@ -820,21 +832,21 @@ ZELDA3_FEATURE_MIRROR_TO_DARK_WORLD ?= 0
 # Collect items (like hearts) with sword instead of having to touch them
 ZELDA3_FEATURE_COLLECT_ITEMS_WITH_SWORD ?= 0
 # Level 2-4 sword can be used to break pots
-ZELDA3_FEATURE_BREAK_POTS_WITH_SWORD ?= 0
+ZELDA3_FEATURE_BREAK_POTS_WITH_SWORD ?= 1
 # Disable the low health beep
 ZELDA3_FEATURE_DISABLE_LOW_HEALTH_BEEP ?= 0
 # Avoid waiting too much at the start
 ZELDA3_FEATURE_SKIP_INTRO_ON_KEYPRESS ?= 1
 # Display max rupees/bombs/arrows with orange/yellow color
-ZELDA3_FEATURE_SHOW_MAX_ITEMS_IN_YELLOW ?= 0
+ZELDA3_FEATURE_SHOW_MAX_ITEMS_IN_YELLOW ?= 1
 # Allows up to four bombs active at a time instead of two.
 ZELDA3_FEATURE_MORE_ACTIVE_BOMBS ?= 0
 # Can carry 9999 rupees instead of 999
 ZELDA3_FEATURE_CARRY_MORE_RUPEES ?= 0
 # Enable various zelda bug fixes
-ZELDA3_FEATURE_MISC_BUG_FIXES ?= 0
+ZELDA3_FEATURE_MISC_BUG_FIXES ?= 1
 # Allow bird travel to be cancelled by hitting the X key
-ZELDA3_FEATURE_CANCEL_BIRD_TRAVEL ?= 0
+ZELDA3_FEATURE_CANCEL_BIRD_TRAVEL ?= 1
 # Enable some more advanced zelda bugfixes that change game behavior
 ZELDA3_FEATURE_GAME_CHANGING_BUG_FIXES ?= 0
 # Enable this to limit the ItemSwitchLR item cycling to the first 4 items.
@@ -1195,7 +1207,7 @@ docker_build:
 
 docker:
 	$(V)docker run --rm -it --privileged --user $(shell id -u):$(shell id -g) -v $(PWD):/opt/workdir -v /dev/bus/usb:/dev/bus/usb sylverb/retro-go-sd-builder \
-	bash -l -c "make -j\$$(nproc) COVERFLOW=1 SHARED_HIBERNATE_SAVESTATE=1 DISABLE_SPLASH_SCREEN=1 INTFLASH_BANK=2 CHEAT_CODES=1 release"
+	bash -l -c "make -j\$$(nproc) COVERFLOW=1 SHARED_HIBERNATE_SAVESTATE=1 DISABLE_SPLASH_SCREEN=1 INTFLASH_BANK=2 CHEAT_CODES=1 ENABLE_BOOT_OC=1 DISABLE_APP_LOGO=1 ENABLE_FAST_BOOT=1 CHECK_DIRTY_SUBMODULE=0 release"
 .PHONY: docker
 
 help:

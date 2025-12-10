@@ -455,10 +455,112 @@ void odroid_system_switch_app(int app)
         }
 #endif
 
-        *((uint32_t *)0x2001FFF8) = 0x544F4F42;              // "BOOT"
-        *((uint32_t *)0x2001FFFC) = (uint32_t)&__INTFLASH__; // vector table
+        //*((uint32_t *)0x2001FFF8) = 0x544F4F42;              // "BOOT"
+        //*((uint32_t *)0x2001FFFC) = (uint32_t)&__INTFLASH__; // vector table
+        //NVIC_SystemReset();
 
-        NVIC_SystemReset();
+        odroid_overlay_draw_fill_rect(0, 0, ODROID_SCREEN_WIDTH, ODROID_SCREEN_HEIGHT, curr_colors->sel_c);
+
+        app_logo();
+        lcd_sync();
+                lcd_swap();
+        //        
+//
+        //for (int i = 0; i < 5; i++)
+        //{
+        //    //wdog_refresh();
+        //    lcd_wait_for_vblank();
+        //}
+        
+        //*((uint32_t *)0x2001FFF8) = 0x544F4F42;              // "BOOT"
+        //*((uint32_t *)0x2001FFFC) = (uint32_t)&__INTFLASH__; // vector table
+//
+        //NVIC_SystemReset();
+
+#if true
+        
+        printf("HAL_DeInit");
+        //HAL_Delay(500);
+  /* Reset of all peripherals */
+__HAL_RCC_AHB3_FORCE_RESET();
+__HAL_RCC_AHB3_RELEASE_RESET();
+
+__HAL_RCC_AHB1_FORCE_RESET();
+__HAL_RCC_AHB1_RELEASE_RESET();
+
+__HAL_RCC_AHB2_FORCE_RESET();
+__HAL_RCC_AHB2_RELEASE_RESET();
+
+//__HAL_RCC_AHB4_FORCE_RESET();
+//__HAL_RCC_AHB4_RELEASE_RESET();
+
+__HAL_RCC_APB3_FORCE_RESET();
+__HAL_RCC_APB3_RELEASE_RESET();
+
+__HAL_RCC_APB1L_FORCE_RESET();
+__HAL_RCC_APB1L_RELEASE_RESET();
+
+__HAL_RCC_APB1H_FORCE_RESET();
+__HAL_RCC_APB1H_RELEASE_RESET();
+
+ __HAL_RCC_APB2_FORCE_RESET();
+ __HAL_RCC_APB2_RELEASE_RESET();
+
+__HAL_RCC_APB4_FORCE_RESET();
+__HAL_RCC_APB4_RELEASE_RESET();
+
+  /* De-Init the low level hardware */
+  //HAL_MspDeInit();
+        //HAL_Delay(3000);
+
+  //lcd_backlight_off();
+  //lcd_deinit(SPI2);
+
+  LTDC_HandleTypeDef hltdc= {};
+    hltdc.Instance = LTDC;
+  __HAL_LTDC_DISABLE_IT(&hltdc, LTDC_IT_LI | LTDC_IT_RR);
+
+            //__disable_irq();
+        boot_magic_set(BOOT_MAGIC_CORE);
+
+          SCB_InvalidateDCache();
+  SCB_InvalidateICache();
+
+  SCB_EnableICache();
+  SCB_EnableDCache();
+
+        //*((uint32_t *)0x2001FFF8) = 0x544F4F42;              // "BOOT"
+        //*((uint32_t *)0x2001FFFC) = (uint32_t)&__INTFLASH__; // vector table
+        //NVIC_SystemReset();
+
+void __attribute__((naked)) start_app(void (*const pc)(void), uint32_t sp)
+{
+    __asm("           \n\
+          msr msp, r1 /* load r1 into MSP */\n\
+          bx r0       /* branch to the address at r0 */\n\
+    ");
+}
+
+void boot_bank2(void)
+{
+    uint32_t sp = *((uint32_t *)FLASH_BANK2_BASE);
+    uint32_t pc = *((uint32_t *)FLASH_BANK2_BASE + 1);
+
+    // Check that Bank 2 content is valid
+    __set_MSP(sp);
+    __set_PSP(sp);
+//HAL_MPU_Disable();
+    start_app((void (*const)(void))pc, (uint32_t)sp);
+}
+
+        while(1) {
+            boot_bank2();
+        }
+#else
+        while (1) {
+            app_main(BOOT_MODE_HOT);
+        }
+#endif
         break;
     case 9:
         *((uint32_t *)0x2001FFF8) = 0x544F4F42;              // "BOOT"
@@ -494,7 +596,7 @@ void odroid_system_set_sleep_hook(sleep_hook_t callback)
     sleep_hook = callback;
 }
 
-void odroid_system_sleep(void)
+void odroid_system_sleep_internal(system_sleep_flags_t flags)
 {
     if (sleep_hook != NULL)
     {
@@ -502,9 +604,25 @@ void odroid_system_sleep(void)
     }
     odroid_settings_StartupFile_set(ACTIVE_FILE);
 
-    // odroid_settings_commit();
-    gui_save_current_tab();
-    app_sleep_logo();
+    if (flags & SLEEP_SHOW_ANIMATION) {
+        app_sleep_logo();
+    }
 
-    GW_EnterDeepSleep();
+    gui_save_current_tab();
+
+    if (flags & SLEEP_ENTER_SLEEP) {
+        GW_EnterDeepSleep(false);
+    } else if (flags & SLEEP_ENTER_STANDBY) {
+        GW_EnterDeepSleep(true);
+    }
+}
+
+void odroid_system_sleep_ex(system_sleep_flags_t flags)
+{
+    odroid_system_sleep_internal(flags);
+}
+
+void odroid_system_sleep(void)
+{
+    odroid_system_sleep_internal(SLEEP_SHOW_ANIMATION | SLEEP_ENTER_SLEEP);
 }
